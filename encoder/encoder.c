@@ -541,13 +541,6 @@ static int x264_validate_parameters( x264_t *h, int b_open )
     if( h->i_thread_frames > 1 )
         h->param.nalu_process = NULL;
 
-    h->param.i_keyint_max = x264_clip3( h->param.i_keyint_max, 1, X264_KEYINT_MAX_INFINITE );
-    if( h->param.i_keyint_max == 1 )
-    {
-        h->param.b_intra_refresh = 0;
-        h->param.analyse.i_weighted_pred = 0;
-    }
-
     h->param.i_frame_packing = x264_clip3( h->param.i_frame_packing, -1, 5 );
 
     /* Detect default ffmpeg settings and terminate with an error. */
@@ -684,7 +677,14 @@ static int x264_validate_parameters( x264_t *h, int b_open )
     if( h->param.b_bluray_compat )
     {
         h->param.i_bframe_pyramid = X264_MIN( X264_B_PYRAMID_STRICT, h->param.i_bframe_pyramid );
-        h->param.i_bframe = X264_MIN( h->param.i_bframe, 3 );
+        h->param.i_bframe = x264_clip3( h->param.i_bframe, 0, 3 );
+        if( b_open && h->param.b_open_gop && h->param.i_keyint_max < X264_KEYINT_MAX_INFINITE )
+        {
+            /* Bluray limits GOP size in stream order so keyint or bframes should be adjusted */
+            h->param.i_keyint_max = x264_clip3( h->param.i_keyint_max, 1, X264_KEYINT_MAX_INFINITE );
+            h->param.i_bframe = x264_clip3( h->param.i_bframe, 0, (h->param.i_keyint_max - 1) / 2 );
+            h->param.i_keyint_max -= h->param.i_bframe;
+        }
         h->param.b_aud = 1;
         h->param.i_nal_hrd = X264_MAX( h->param.i_nal_hrd, X264_NAL_HRD_VBR );
         h->param.i_slice_max_size = 0;
@@ -698,6 +698,13 @@ static int x264_validate_parameters( x264_t *h, int b_open )
         h->param.analyse.i_weighted_pred = X264_MIN( h->param.analyse.i_weighted_pred, X264_WEIGHTP_SIMPLE );
         if( h->param.b_fake_interlaced )
             h->param.b_pic_struct = 1;
+    }
+
+    h->param.i_keyint_max = x264_clip3( h->param.i_keyint_max, 1, X264_KEYINT_MAX_INFINITE );
+    if( h->param.i_keyint_max == 1 )
+    {
+        h->param.b_intra_refresh = 0;
+        h->param.analyse.i_weighted_pred = 0;
     }
 
     h->param.i_frame_reference = x264_clip3( h->param.i_frame_reference, 1, X264_REF_MAX );
