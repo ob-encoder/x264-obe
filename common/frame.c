@@ -364,7 +364,7 @@ int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
     }
 #endif
 
-    dst->i_type     = src->i_type;
+    dst->i_type     = dst->i_forced_type = src->i_type;
     dst->i_qpplus1  = src->i_qpplus1;
     dst->i_pts      = dst->i_reordered_pts = src->i_pts;
     dst->param      = src->param;
