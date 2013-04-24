@@ -1712,10 +1712,6 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 }
 #endif
 
-                cost1b1 = x264_slicetype_frame_cost( h, &a, frames, i+0, i+2, i+1, 0 );
-                cost1p0 = x264_slicetype_frame_cost( h, &a, frames, i+0, i+1, i+1, 0 );
-                cost2p0 = x264_slicetype_frame_cost( h, &a, frames, i+1, i+2, i+2, 0 );
-
                 if( IS_X264_TYPE_B( frames[j+1]->i_type ) )
                 {
                     frames[j]->i_type = X264_TYPE_P;
