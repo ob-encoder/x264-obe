@@ -37,10 +37,6 @@
 #include "common/visualize.h"
 #endif
 
-#if HAVE_OPENCL
-#include "common/opencl.h"
-#endif
-
 //#define DEBUG_MB_TYPE
 
 #define bs_write_ue bs_write_ue_big
@@ -722,7 +718,8 @@ static int x264_validate_parameters( x264_t *h, int b_open )
         if( h->param.i_slice_max_mbs || h->param.i_slice_max_size )
             h->param.i_slice_count = 0;
     }
-    h->param.i_slice_count_max = X264_MAX( h->param.i_slice_count, h->param.i_slice_count_max );
+    if( h->param.i_slice_count_max > 0 )
+        h->param.i_slice_count_max = X264_MAX( h->param.i_slice_count, h->param.i_slice_count_max );
 
     if( h->param.b_bluray_compat )
     {
@@ -1414,6 +1411,18 @@ x264_t *x264_encoder_open( x264_param_t *param )
         x264_threadpool_init( &h->lookaheadpool, h->param.i_lookahead_threads, (void*)x264_lookahead_thread_init, h ) )
         goto fail;
 
+#if HAVE_OPENCL
+    if( h->param.b_opencl )
+    {
+        h->opencl.ocl = x264_opencl_load_library();
+        if( !h->opencl.ocl )
+        {
+            x264_log( h, X264_LOG_WARNING, "failed to load OpenCL\n" );
+            h->param.b_opencl = 0;
+        }
+    }
+#endif
+
     h->thread[0] = h;
     for( int i = 1; i < h->param.i_threads + !!h->param.i_sync_lookahead; i++ )
         CHECKED_MALLOC( h->thread[i], sizeof(x264_t) );
@@ -1455,7 +1464,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
     }
 
 #if HAVE_OPENCL
-    if( h->param.b_opencl && x264_opencl_init( h ) < 0 )
+    if( h->param.b_opencl && x264_opencl_lookahead_init( h ) < 0 )
         h->param.b_opencl = 0;
 #endif
 
@@ -2505,7 +2514,7 @@ reencode:
                      * If possible, roll back to the last checkpoint and try again.
                      * We could try raising QP, but that would break in the case where a slice spans multiple
                      * rows, which the re-encoding infrastructure can't currently handle. */
-                    if( mb_xy < thread_last_mb && (thread_last_mb+1-mb_xy) < h->param.i_slice_min_mbs )
+                    if( mb_xy <= thread_last_mb && (thread_last_mb+1-mb_xy) < h->param.i_slice_min_mbs )
                     {
                         if( thread_last_mb-h->param.i_slice_min_mbs < h->sh.i_first_mb+h->param.i_slice_min_mbs )
                         {
@@ -3681,11 +3690,12 @@ void    x264_encoder_close  ( x264_t *h )
                    || h->stat.i_mb_count[SLICE_TYPE_P][I_PCM]
                    || h->stat.i_mb_count[SLICE_TYPE_B][I_PCM];
 
-#if HAVE_OPENCL
-    x264_opencl_free( h );
-#endif
-
     x264_lookahead_delete( h );
+
+#if HAVE_OPENCL
+    x264_opencl_lookahead_delete( h );
+    x264_opencl_function_t *ocl = h->opencl.ocl;
+#endif
 
     if( h->param.b_sliced_threads )
         x264_threadpool_wait_all( h );
@@ -4037,6 +4047,9 @@ void    x264_encoder_close  ( x264_t *h )
         x264_pthread_cond_destroy( &h->thread[i]->cv );
         x264_free( h->thread[i] );
     }
+#if HAVE_OPENCL
+    x264_opencl_close_library( ocl );
+#endif
 }
 
 int x264_encoder_delayed_frames( x264_t *h )
