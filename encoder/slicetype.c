@@ -1704,9 +1704,9 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 if( h->param.b_opencl )
                 {
                     int b_work_done = 0;
-                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, i+0, i+2, i+1 );
-                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, i+0, i+1, i+1 );
-                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, i+1, i+2, i+2 );
+                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, j+0, j+2, j+1 );
+                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, j+0, j+1, j+1 );
+                    b_work_done |= x264_opencl_precalculate_frame_cost(h, frames, a.i_lambda, j+1, j+2, j+2 );
                     if( b_work_done )
                         x264_opencl_flush( h );
                 }
