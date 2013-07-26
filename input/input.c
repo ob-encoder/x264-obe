@@ -87,10 +87,10 @@ int x264_cli_pic_alloc( cli_pic_t *pic, int csp, int width, int height )
     pic->img.height = height;
     for( int i = 0; i < pic->img.planes; i++ )
     {
-         pic->img.plane[i] = x264_malloc( x264_cli_pic_plane_size( csp, width, height, i ) );
-         if( !pic->img.plane[i] )
-             return -1;
-         pic->img.stride[i] = width * x264_cli_csps[csp_mask].width[i] * x264_cli_csp_depth_factor( csp );
+        pic->img.plane[i] = x264_malloc( x264_cli_pic_plane_size( csp, width, height, i ) );
+        if( !pic->img.plane[i] )
+            return -1;
+        pic->img.stride[i] = width * x264_cli_csps[csp_mask].width[i] * x264_cli_csp_depth_factor( csp );
     }
 
     return 0;
