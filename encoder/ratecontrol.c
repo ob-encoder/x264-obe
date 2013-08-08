@@ -1950,7 +1950,7 @@ int x264_ratecontrol_end( x264_t *h, int bits, int *filler )
         }
 
         int filler_bits = *filler ? X264_MAX( (FILLER_OVERHEAD - h->param.b_annexb), *filler )*8 : 0;
-        uint64_t frame_size = (bits + filler_bits) * h->sps->vui.i_time_scale;
+        uint64_t frame_size = (uint64_t)(bits + filler_bits) * h->sps->vui.i_time_scale;
         uint64_t integer = (multiply_factor * frame_size) / (2*denom);
 
         rc->previous_cpb_final_arrival_time_int = h->fenc->hrd_timing.cpb_initial_arrival_time + integer;
