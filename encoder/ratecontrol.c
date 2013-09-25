@@ -724,6 +724,23 @@ void x264_ratecontrol_init_reconfigurable( x264_t *h, int b_init )
         h->sps->vui.hrd.i_bit_rate_unscaled = rc->vbv_max_rate;
         h->sps->vui.hrd.i_cpb_size_unscaled = rc->buffer_size;
 
+        if( h->param.i_nal_hrd )
+        {
+            uint64_t denom = (uint64_t)h->sps->vui.hrd.i_bit_rate_unscaled * h->sps->vui.i_time_scale;
+            uint64_t num = 54000000;
+            x264_reduce_fraction64( &num, &denom );
+            rc->hrd_multiply_denom = 54000000 / num;
+
+            double bits_required = log2( 54000000 / rc->hrd_multiply_denom )
+                                 + log2( h->sps->vui.i_time_scale )
+                                 + log2( h->sps->vui.hrd.i_cpb_size_unscaled );
+            if( bits_required >= 63 )
+            {
+                x264_log( h, X264_LOG_ERROR, "HRD with very large timescale and bufsize not supported\n" );
+                return;
+            }
+        }
+
         rc->cbr_decay = 1.0 - rc->buffer_rate / rc->buffer_size
                       * 0.5 * X264_MAX(0, 1.5 - rc->buffer_rate * rc->fps / rc->bitrate);
         if( h->param.rc.i_rc_method == X264_RC_CRF && h->param.rc.f_rf_constant_max )
@@ -788,23 +805,6 @@ int x264_ratecontrol_new( x264_t *h )
     }
 
     x264_ratecontrol_init_reconfigurable( h, 1 );
-
-    if( h->param.i_nal_hrd )
-    {
-        uint64_t denom = (uint64_t)h->sps->vui.hrd.i_bit_rate_unscaled * h->sps->vui.i_time_scale;
-        uint64_t num = 54000000;
-        x264_reduce_fraction64( &num, &denom );
-        rc->hrd_multiply_denom = 54000000 / num;
-
-        double bits_required = log2( 54000000 / rc->hrd_multiply_denom )
-                             + log2( h->sps->vui.i_time_scale )
-                             + log2( h->sps->vui.hrd.i_cpb_size_unscaled );
-        if( bits_required >= 63 )
-        {
-            x264_log( h, X264_LOG_ERROR, "HRD with very large timescale and bufsize not supported\n" );
-            return -1;
-        }
-    }
 
     if( rc->rate_tolerance < 0.01 )
     {
@@ -2723,6 +2723,7 @@ void x264_thread_sync_ratecontrol( x264_t *cur, x264_t *prev, x264_t *next )
         COPY(cbr_decay);
         COPY(rate_factor_constant);
         COPY(rate_factor_max_increment);
+        COPY(hrd_multiply_denom);
 #undef COPY
     }
     if( cur != next )
